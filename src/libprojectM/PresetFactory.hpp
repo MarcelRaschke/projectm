@@ -4,12 +4,12 @@
 
 #include <memory>
 
+namespace libprojectM {
+
 class PresetFactory
 {
 
 public:
-    static const std::string IDLE_PRESET_PROTOCOL; //!< The string "idle"
-
     PresetFactory() = default;
 
     virtual ~PresetFactory() = default;
@@ -47,3 +47,5 @@ public:
      */
     virtual std::string supportedExtensions() const = 0;
 };
+
+} // namespace libprojectM

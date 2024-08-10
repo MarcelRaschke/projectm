@@ -20,7 +20,6 @@ Optional packages for additional features:
 
 ```bash
 sudo apt install qtbase5-dev # For building Qt-based UIs
-sudo apt install llvm-dev # for using the experimental LLVM Jit
 sudo apt install libvisual-0.4-dev # To build the libvisual plug-in
 sudo apt install libjack-jackd2-dev # To build the JACK visualizer application
 sudo apt install ninja # To build projectM with Ninja instead of make
@@ -32,13 +31,16 @@ If you want to use a stable version of projectM, download the latest release fro
 the [Releases page on GitHub](https://github.com/projectM-visualizer/projectm/releases) and unpack it. You can then skip
 to the next step.
 
-If you prefer a bleeding-edge version or want to modify the code, clone the Git repository:
+If you prefer a bleeding-edge version or want to modify the code, clone the Git repository and initialize any
+submodules:
 
 ```bash
 sudo apt install git # Probably already installed
 git clone https://github.com/projectM-visualizer/projectm.git /path/to/local/repo
 cd /path/to/local/repo
 git fetch --all --tags
+git submodule init
+git submodule update
 ```
 
 ### Build and install projectM
@@ -89,8 +91,6 @@ development files. To build projectM, both binaries and development files need t
   autotools or if not installed.
 * [**SDL2**](https://github.com/libsdl-org/SDL): Simple Directmedia Layer. Version 2.0.5 or higher is required to build
   the standalone visualizer application (projectMSDL).
-* [**LLVM**](https://llvm.org/): Low-Level Virtual Machine. Optional and **experimental**, used to speed up preset
-  execution by leveraging the LLVM JIT compiler.
 
 #### Only relevant for Linux distributions, FreeBSD and macOS:
 
@@ -208,19 +208,10 @@ dependencies using the project files, while CMake requires the libraries before 
 #### Installing the dependencies with vcpkg
 
 As stated above, using vcpkg is the easiest way to get the required dependencies. First,
-install [vcpkg from GitHub](https://github.com/microsoft/vcpkg) by following the official guide. Then install the
-following packages for your desired architecture (called "triplet"):
+install [vcpkg from GitHub](https://github.com/microsoft/vcpkg) by following the official guide.
 
-- `glew`
-- `sdl2`
-
-The `glew` package will also pull in the `opengl` libraries.
-
-Example to install the libraries for the x64 architecture, run from a Visual Studio command prompt:
-
-```commandline
-vcpkg install glew:x64-windows sdl2:x64-windows
-```
+We've included a vcpkg manifest file in the repository root, designed to automatically install dependencies when you
+create your solution.
 
 #### Creating the Visual Studio solution
 
@@ -302,11 +293,14 @@ To build projectM using the Android SDK, please refer to the official NDK docs:
 
 It is highly recommended using the latest NDK and CMake >= 3.21 for building.
 
-### LLVM JIT
+### Using libprojectM with pkgconfig
 
-There are some optimizations for parsing preset equations that leverage the LLVM JIT. You can try adding the CMake
-option `-DENABLE_LLVM=ON` to enable them. They may not work with a newer version of
-LLVM (https://github.com/projectM-visualizer/projectm/pull/360).
+Some UNIX build systems cannot use CMake config packages, like GNU autotools. To use libprojectM with such build
+systems, projectM's build system also creates basic `.pc` files during the installation process.
+
+Note that the resulting pkgconfig files will not necessarily work in all circumstances, because they are much less
+flexible than CMake (or Meson). When using pkgconfig, some required libraries will probably nor be linked
+automatically (e.g. OpenGL libraries) and have to be added manually depending on the application needs.
 
 ## libprojectM
 

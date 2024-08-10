@@ -25,24 +25,22 @@
 *
 */
 
+#pragma once
 
-#ifndef pmSDL_hpp
-#define pmSDL_hpp
-
+#include <SDL2/SDL.h>
 
 // Disable LOOPBACK and FAKE audio to enable microphone input
 #ifdef _WIN32
-#define WASAPI_LOOPBACK     1
+#define WASAPI_LOOPBACK 1
 #endif /** _WIN32 */
-#define FAKE_AUDIO          0
+#define FAKE_AUDIO 0
 // ----------------------------
-#define TEST_ALL_PRESETS    0
-#define STEREOSCOPIC_SBS    0
+#define TEST_ALL_PRESETS 0
+#define STEREOSCOPIC_SBS 0
 
 // projectM
-#include <libprojectM/projectM.h>
-#include <libprojectM/sdltoprojectM.h>
-#include <playlist.h>
+#include <projectM-4/playlist.h>
+#include <projectM-4/projectM.h>
 
 // projectM SDL
 #include "audioCapture.hpp"
@@ -52,24 +50,27 @@
 
 
 #if defined _MSC_VER
-#  include <direct.h>
+#include <direct.h>
 #endif
 
 #include <fstream>
-#include <string>
-#include <iostream>
-#include <sys/stat.h>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
+#include <iostream>
+#include <string>
+#include <sys/stat.h>
 
 #ifdef WASAPI_LOOPBACK
-#include <stdio.h>
 #include <windows.h>
-#include <mmsystem.h>
 #include <mmdeviceapi.h>
 #include <audioclient.h>
-#include <avrt.h>
+
 #include <functiondiscoverykeys_devpkey.h>
+#include <avrt.h>
+
+#include <mmsystem.h>
+#include <stdio.h>
+
 
 #define LOG(format, ...) wprintf(format L"\n", __VA_ARGS__)
 #define ERR(format, ...) LOG(L"Error: " format, __VA_ARGS__)
@@ -87,37 +88,37 @@
 // DATADIR_PATH should be set by the root Makefile if this is being
 // built with autotools.
 #ifndef DATADIR_PATH
-    #ifdef DEBUG
-        #define DATADIR_PATH "."
+#ifdef DEBUG
+#define DATADIR_PATH "."
 #ifndef _WIN32
-        #warning "DATADIR_PATH is not defined - falling back to ./"
+#warning "DATADIR_PATH is not defined - falling back to ./"
 #else
-        #pragma warning "DATADIR_PATH is not defined - falling back to ./"
+#pragma warning "DATADIR_PATH is not defined - falling back to ./"
 #endif /** _WIN32 */
-    #else
-        #define DATADIR_PATH "/usr/local/share/projectM"
+#else
+#define DATADIR_PATH "/usr/local/share/projectM"
 #ifndef _WIN32
-        #warning "DATADIR_PATH is not defined - falling back to /usr/local/share/projectM"
+#warning "DATADIR_PATH is not defined - falling back to /usr/local/share/projectM"
 #endif /** _WIN32 */
-    #endif
+#endif
 #endif
 
-class projectMSDL {
-    
+class projectMSDL
+{
+
 public:
-    projectMSDL(SDL_GLContext glCtx, projectm_settings* settings, const std::string& presetPath);
-    projectMSDL(SDL_GLContext glCtx, const std::string& config_file, const std::string& presetPath);
+    projectMSDL(SDL_GLContext glCtx, const std::string& presetPath);
 
     ~projectMSDL();
 
-    void init(SDL_Window *window, const bool renderToTexture = false);
+    void init(SDL_Window* window, const bool renderToTexture = false);
     int openAudioInput();
     int toggleAudioInput();
     int initAudioInput();
     void beginAudioCapture();
     void endAudioCapture();
-	void stretchMonitors();
-	void nextMonitor();
+    void stretchMonitors();
+    void nextMonitor();
     void toggleFullScreen();
     void resize(unsigned int width, unsigned int height);
     void touch(float x, float y, int pressure, int touchtype = 0);
@@ -130,51 +131,44 @@ public:
     std::string getActivePresetName();
     void addFakePCM();
     projectm_handle projectM();
-    const projectm_settings* settings();
+    void setFps(size_t fps);
+    size_t fps() const;
 
-    bool done{ false };
-    bool mouseDown{ false };
-    bool wasapi{ false }; // Used to track if wasapi is currently active. This bool will allow us to run a WASAPI app and still toggle to microphone inputs.
-    bool fakeAudio{ false }; // Used to track fake audio, so we can turn it off and on.
-    bool stretch{ false }; // used for toggling stretch mode
+    bool done{false};
+    bool mouseDown{false};
+    bool wasapi{false};    // Used to track if wasapi is currently active. This bool will allow us to run a WASAPI app and still toggle to microphone inputs.
+    bool fakeAudio{false}; // Used to track fake audio, so we can turn it off and on.
+    bool stretch{false};   // used for toggling stretch mode
 
-    SDL_GLContext glCtx{ nullptr };
+    SDL_GLContext _openGlContext{nullptr};
 
 private:
     static void presetSwitchedEvent(bool isHardCut, uint32_t index, void* context);
 
-    static void audioInputCallbackF32(void *userdata, unsigned char *stream, int len);
-    static void audioInputCallbackS16(void *userdata, unsigned char *stream, int len);
+    static void audioInputCallbackF32(void* userdata, unsigned char* stream, int len);
 
-    void scrollHandler(SDL_Event *);
-    void keyHandler(SDL_Event *);
+    void UpdateWindowTitle();
 
-    projectm_handle _projectM{ nullptr };
-    projectm_settings* _settings{ nullptr };
-    projectm_playlist_handle _playlist{ nullptr };
+    void scrollHandler(SDL_Event*);
+    void keyHandler(SDL_Event*);
 
-    SDL_Window *win{ nullptr };
-    bool isFullScreen{ false };
-    SDL_AudioDeviceID audioInputDevice{ 0 };
-    size_t width{ 0 };
-    size_t height{ 0 };
-    GLuint programID{ 0 };
-    GLuint m_vbo{ 0 };
-    GLuint m_vao{ 0 };
-    GLuint textureID{ 0 };
+    projectm_handle _projectM{nullptr};
+    projectm_playlist_handle _playlist{nullptr};
 
-    bool _shuffle{ true };
+    SDL_Window* _sdlWindow{nullptr};
+    bool _isFullScreen{false};
+    size_t _width{0};
+    size_t _height{0};
+    size_t _fps{60};
+
+    bool _shuffle{true};
 
     // audio input device characteristics
-    unsigned int NumAudioDevices{ 0 };
-    int CurAudioDevice{ 0 };            // SDL's device indexes are 0-based, -1 means "system default"
-    unsigned short audioChannelsCount{ 0 };
-    unsigned short audioSampleRate{ 0 };
-    unsigned short audioSampleCount{ 0 };
-    SDL_AudioFormat audioFormat{ 0 };
-    SDL_AudioDeviceID audioDeviceID{ 0 };
-    int selectedAudioDevice{ 0 };
+    unsigned int _numAudioDevices{0};
+    int _curAudioDevice{0}; // SDL's device indexes are 0-based, -1 means "system default"
+    unsigned short _audioChannelsCount{0};
+    SDL_AudioDeviceID _audioDeviceId{0};
+    int _selectedAudioDevice{0};
+
+    std::string _presetName; //!< Current preset name
 };
-
-
-#endif /* pmSDL_hpp */

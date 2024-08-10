@@ -1,55 +1,37 @@
-//
-// C++ Implementation: PresetFactoryManager
-//
-// Description:
-//
-//
-// Author: Carmelo Piccione <carmelo.piccione@gmail.com>, (C) 2008
-//
-// Copyright: See COPYING file that comes with this distribution
-//
-//
 #include "PresetFactoryManager.hpp"
 
-#include "Common.hpp"
+#include <MilkdropPreset/Factory.hpp>
 
-#include <MilkdropPresetFactory/MilkdropPresetFactory.hpp>
-
+#include <algorithm>
 #include <cassert>
 #include <iostream>
 #include <sstream>
 
+namespace libprojectM {
+
 PresetFactoryManager::~PresetFactoryManager()
 {
+    ClearFactories();
+}
+
+void PresetFactoryManager::ClearFactories()
+{
+    m_factoryMap.clear();
     for (std::vector<PresetFactory*>::iterator pos = m_factoryList.begin();
          pos != m_factoryList.end(); ++pos)
     {
         assert(*pos);
         delete (*pos);
     }
-
-    m_initialized = false;
+    m_factoryList.clear();
 }
 
-void PresetFactoryManager::initialize(int meshX, int meshY)
+void PresetFactoryManager::initialize()
 {
-    m_meshX = meshX;
-    m_meshY = meshY;
+    ClearFactories();
 
-    if (!m_initialized)
-    {
-        m_initialized = true;
-    }
-    else
-    {
-        std::cout << "already initialized " << std::endl;
-        return;
-    }
-
-    PresetFactory* factory;
-
-    factory = new MilkdropPresetFactory(m_meshX, m_meshY);
-    registerFactory(factory->supportedExtensions(), factory);
+    auto* milkdropFactory = new MilkdropPreset::Factory();
+    registerFactory(milkdropFactory->supportedExtensions(), milkdropFactory);
 }
 
 // Current behavior if a conflict is occurs is to override the previous request
@@ -84,7 +66,7 @@ std::unique_ptr<Preset> PresetFactoryManager::CreatePresetFromFile(const std::st
 
         return factory(extension).LoadPresetFromFile(filename);
     }
-    catch (const PresetFactoryException& e)
+    catch (const PresetFactoryException&)
     {
         throw;
     }
@@ -104,7 +86,7 @@ std::unique_ptr<Preset> PresetFactoryManager::CreatePresetFromStream(const std::
     {
         return factory(extension).LoadPresetFromStream(data);
     }
-    catch (const PresetFactoryException& e)
+    catch (const PresetFactoryException&)
     {
         throw;
     }
@@ -144,3 +126,18 @@ std::vector<std::string> PresetFactoryManager::extensionsHandled() const
     }
     return retval;
 }
+
+//CPP17: std::filesystem::path::extension
+auto PresetFactoryManager::ParseExtension(const std::string& filename) -> std::string
+{
+    const auto start = filename.find_last_of('.');
+
+    if (start == std::string::npos || start >= (filename.length() - 1)) {
+        return "";
+    }
+    std::string ext = filename.substr(start + 1, filename.length());
+    std::transform(ext.begin(), ext.end(), ext.begin(), tolower);
+    return ext;
+}
+
+} // namespace libprojectM

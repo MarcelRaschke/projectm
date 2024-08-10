@@ -1,14 +1,35 @@
 #pragma once
 
 #include <chrono>
+#include <random>
+
+namespace libprojectM {
 
 class TimeKeeper
 {
 
 public:
-
     TimeKeeper(double presetDuration, double smoothDuration, double hardcutDuration, double easterEgg);
 
+    /**
+     * @brief Sets a custom time value to use instead of the system time.
+     * If less than zero, the system time will be used instead.
+     * @param secondsSinceStart Fractional seconds since rendering the first frame.
+     */
+    void SetFrameTime(double secondsSinceStart);
+
+    /**
+     * @brief Gets the time of the last frame rendered.
+     * @note This will not return the value set with SetFrameTime, but the actual time used to render the last frame.
+     *       If a user-specified frame time was set, this value is returned. Otherwise, the frame time measured via the
+     *       system clock will be returned.
+     * @return Seconds elapsed rendering the last frame since starting projectM.
+     */
+    double GetFrameTime() const;
+
+    /**
+     * @brief Updates internal timers with either the system clock or a user-specified time value.
+     */
     void UpdateTimers();
 
     void StartPreset();
@@ -33,9 +54,9 @@ public:
 
     int PresetFrameB();
 
-    int PresetTimeA();
+    double PresetTimeA();
 
-    int PresetTimeB();
+    double PresetTimeB();
 
     double sampledPresetDuration();
 
@@ -79,27 +100,38 @@ public:
         m_easterEgg = value;
     }
 
+    inline auto SecondsSinceLastFrame() const -> double
+    {
+        return m_secondsSinceLastFrame;
+    }
+
 private:
-
     /* The first ticks value of the application */
-    std::chrono::high_resolution_clock::time_point m_startTime{ std::chrono::high_resolution_clock::now() };
+    std::chrono::high_resolution_clock::time_point m_startTime{std::chrono::high_resolution_clock::now()};
 
-    double m_easterEgg{ 0.0 };
+    std::random_device m_randomDevice{};
+    std::mt19937 m_randomGenerator{m_randomDevice()};
 
-    double m_presetDuration{ 0.0 };
-    double m_presetDurationA{ 0.0 };
-    double m_presetDurationB{ 0.0 };
-    double m_softCutDuration{ 0.0 };
-    double m_hardCutDuration{ 0.0 };
+    double m_userSpecifiedTime{-1.0}; //!< User-specifed run time. If set to a value >= 0.0, this time is used instead of the system clock.
 
-    double m_currentTime{ 0.0 };
-    double m_presetTimeA{ 0.0 };
-    double m_presetTimeB{ 0.0 };
+    double m_secondsSinceLastFrame{};
 
-    int m_presetFrameA{ 0 };
-    int m_presetFrameB{ 0 };
+    double m_easterEgg{};
 
-    bool m_isSmoothing{ false };
+    double m_presetDuration{};
+    double m_presetDurationA{};
+    double m_presetDurationB{};
+    double m_softCutDuration{};
+    double m_hardCutDuration{};
 
+    double m_currentTime{};
+    double m_presetTimeA{};
+    double m_presetTimeB{};
 
+    int m_presetFrameA{};
+    int m_presetFrameB{};
+
+    bool m_isSmoothing{false};
 };
+
+} // namespace libprojectM

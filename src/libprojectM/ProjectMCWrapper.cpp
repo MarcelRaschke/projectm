@@ -1,42 +1,40 @@
 #include "ProjectMCWrapper.hpp"
 
-#include "libprojectM/projectM.h"
+#include <projectM-4/projectM.h>
+
+#include <Audio/AudioConstants.hpp>
 
 #include <cstring>
-#include <utility>
 #include <sstream>
+#include <projectM-4/render_opengl.h>
+#include <projectM-4/parameters.h>
 
-projectMWrapper::projectMWrapper(std::string configFile)
-    : ProjectM(std::move(configFile))
-{
-}
 
-projectMWrapper::projectMWrapper(class ProjectM::Settings settings)
-    : ProjectM(std::move(settings))
-{
-}
+namespace libprojectM {
 
 void projectMWrapper::PresetSwitchRequestedEvent(bool isHardCut) const
 {
-    if (_presetSwitchRequestedEventCallback)
+    if (m_presetSwitchRequestedEventCallback)
     {
-        _presetSwitchRequestedEventCallback(isHardCut, _presetSwitchRequestedEventUserData);
+        m_presetSwitchRequestedEventCallback(isHardCut, m_presetSwitchRequestedEventUserData);
     }
 }
 
 void projectMWrapper::PresetSwitchFailedEvent(const std::string& presetFilename,
                                               const std::string& failureMessage) const
 {
-    if (_presetSwitchFailedEventCallback)
+    if (m_presetSwitchFailedEventCallback)
     {
-        _presetSwitchFailedEventCallback(presetFilename.c_str(),
-                                         failureMessage.c_str(), _presetSwitchFailedEventUserData);
+        m_presetSwitchFailedEventCallback(presetFilename.c_str(),
+                                         failureMessage.c_str(), m_presetSwitchFailedEventUserData);
     }
 }
 
-projectMWrapper* handle_to_instance(projectm_handle instance)
+} // namespace libprojectM
+
+libprojectM::projectMWrapper* handle_to_instance(projectm_handle instance)
 {
-    return reinterpret_cast<projectMWrapper*>(instance);
+    return reinterpret_cast<libprojectM::projectMWrapper*>(instance);
 }
 
 char* projectm_alloc_string(unsigned int length)
@@ -53,7 +51,7 @@ char* projectm_alloc_string(unsigned int length)
 
 char* projectm_alloc_string_from_std_string(const std::string& str)
 {
-    auto pointer = projectm_alloc_string(str.length() + 1);
+    auto pointer = projectm_alloc_string(static_cast<uint32_t>(str.length() + 1));
     if (pointer)
     {
         memcpy(pointer, str.c_str(), str.length());
@@ -66,65 +64,11 @@ void projectm_free_string(const char* str)
     delete[] str;
 }
 
-projectm_settings* projectm_alloc_settings()
+projectm_handle projectm_create()
 {
     try
     {
-        return new projectm_settings{};
-    }
-    catch (...)
-    {
-        return nullptr;
-    }
-}
-
-void projectm_free_settings(const projectm_settings* settings)
-{
-    if (settings)
-    {
-        projectm_free_string(settings->texture_path);
-        projectm_free_string(settings->data_path);
-    }
-
-    delete settings;
-}
-
-projectm_handle projectm_create(const char* setting_file_path)
-{
-    try
-    {
-        auto projectMInstance = new projectMWrapper(std::string(setting_file_path));
-        return reinterpret_cast<projectm_handle>(projectMInstance);
-    }
-    catch (...)
-    {
-        return nullptr;
-    }
-}
-
-projectm_handle projectm_create_settings(const projectm_settings* settings)
-{
-    try
-    {
-        class ProjectM::Settings cppSettings;
-        cppSettings.meshX = settings->mesh_x;
-        cppSettings.meshY = settings->mesh_y;
-        cppSettings.fps = settings->fps;
-        cppSettings.textureSize = settings->texture_size;
-        cppSettings.windowWidth = settings->window_width;
-        cppSettings.windowHeight = settings->window_height;
-        cppSettings.texturePath = settings->texture_path ? settings->texture_path : "";
-        cppSettings.dataPath = settings->data_path ? settings->data_path : "";
-        cppSettings.softCutDuration = settings->soft_cut_duration;
-        cppSettings.presetDuration = settings->preset_duration;
-        cppSettings.hardCutEnabled = settings->hard_cut_enabled;
-        cppSettings.hardCutDuration = settings->hard_cut_duration;
-        cppSettings.hardCutSensitivity = settings->hard_cut_sensitivity;
-        cppSettings.beatSensitivity = settings->beat_sensitivity;
-        cppSettings.aspectCorrection = settings->aspect_correction;
-        cppSettings.easterEgg = settings->easter_egg;
-
-        auto projectMInstance = new projectMWrapper(cppSettings);
+        auto projectMInstance = new libprojectM::projectMWrapper();
         return reinterpret_cast<projectm_handle>(projectMInstance);
     }
     catch (...)
@@ -158,22 +102,32 @@ void projectm_set_preset_switch_requested_event_callback(projectm_handle instanc
                                                          projectm_preset_switch_requested_event callback, void* user_data)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->_presetSwitchRequestedEventCallback = callback;
-    projectMInstance->_presetSwitchRequestedEventUserData = user_data;
+    projectMInstance->m_presetSwitchRequestedEventCallback = callback;
+    projectMInstance->m_presetSwitchRequestedEventUserData = user_data;
 }
 
 void projectm_set_preset_switch_failed_event_callback(projectm_handle instance,
                                                       projectm_preset_switch_failed_event callback, void* user_data)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->_presetSwitchFailedEventCallback = callback;
-    projectMInstance->_presetSwitchFailedEventUserData = user_data;
+    projectMInstance->m_presetSwitchFailedEventCallback = callback;
+    projectMInstance->m_presetSwitchFailedEventUserData = user_data;
 }
 
-void projectm_reset_gl(projectm_handle instance, int width, int height)
+void projectm_set_texture_search_paths(projectm_handle instance,
+                                       const char** texture_search_paths,
+                                       size_t count)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->ResetOpenGL(width, height);
+
+    std::vector<std::string> texturePaths;
+
+    for (size_t index = 0; index < count; index++)
+    {
+        texturePaths.emplace_back(texture_search_paths[index]);
+    }
+
+    projectMInstance->SetTexturePaths(texturePaths);
 }
 
 void projectm_reset_textures(projectm_handle instance)
@@ -182,41 +136,60 @@ void projectm_reset_textures(projectm_handle instance)
     projectMInstance->ResetTextures();
 }
 
-void projectm_render_frame(projectm_handle instance)
+void projectm_get_version_components(int* major, int* minor, int* patch)
+{
+    if (major != nullptr)
+    {
+        *major = PROJECTM_VERSION_MAJOR;
+    }
+    if (minor != nullptr)
+    {
+        *minor = PROJECTM_VERSION_MINOR;
+    }
+    if (patch != nullptr)
+    {
+        *patch = PROJECTM_VERSION_PATCH;
+    }
+}
+
+char* projectm_get_version_string()
+{
+    auto versionLength = strlen(PROJECTM_VERSION_STRING);
+    auto buffer = projectm_alloc_string(static_cast<uint32_t>(versionLength + 1));
+    strncpy(buffer, PROJECTM_VERSION_STRING, versionLength + 1);
+    return buffer;
+}
+
+char* projectm_get_vcs_version_string()
+{
+    auto versionLength = strlen(PROJECTM_VERSION_VCS);
+    auto buffer = projectm_alloc_string(static_cast<uint32_t>(versionLength + 1));
+    strncpy(buffer, PROJECTM_VERSION_VCS, versionLength + 1);
+    return buffer;
+}
+
+void projectm_opengl_render_frame(projectm_handle instance)
 {
     auto projectMInstance = handle_to_instance(instance);
     projectMInstance->RenderFrame();
 }
 
-unsigned int projectm_init_render_to_texture(projectm_handle instance)
+void projectm_opengl_render_frame_fbo(projectm_handle instance, uint32_t framebuffer_object_id)
 {
     auto projectMInstance = handle_to_instance(instance);
-    return projectMInstance->InitRenderToTexture();
+    projectMInstance->RenderFrame(framebuffer_object_id);
 }
 
-void projectm_key_handler(projectm_handle instance, projectMEvent event, projectMKeycode keycode,
-                          projectMModifier modifier)
+void projectm_set_frame_time(projectm_handle instance, double seconds_since_first_frame)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->KeyHandler(event, keycode, modifier);
+    projectMInstance->SetFrameTime(seconds_since_first_frame);
 }
 
-void projectm_default_key_handler(projectm_handle instance, projectMEvent event, projectMKeycode keycode)
+double projectm_get_last_frame_time(projectm_handle instance)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->DefaultKeyHandler(event, keycode);
-}
-
-size_t projectm_get_texture_size(projectm_handle instance)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    return projectMInstance->TextureSize();
-}
-
-void projectm_set_texture_size(projectm_handle instance, size_t size)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->SetTextureSize(size);
+    return projectMInstance->GetFrameTime();
 }
 
 void projectm_set_beat_sensitivity(projectm_handle instance, float sensitivity)
@@ -293,38 +266,29 @@ void projectm_set_preset_duration(projectm_handle instance, double seconds)
 
 void projectm_get_mesh_size(projectm_handle instance, size_t* width, size_t* height)
 {
+    uint32_t w, h;
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->MeshSize(*width, *height);
+    projectMInstance->MeshSize(w, h);
+    *width = static_cast<size_t>(w);
+    *height = static_cast<size_t>(h);
 }
 
 void projectm_set_mesh_size(projectm_handle instance, size_t width, size_t height)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->SetMeshSize(width, height);
+    projectMInstance->SetMeshSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 }
 
 int32_t projectm_get_fps(projectm_handle instance)
 {
     auto projectMInstance = handle_to_instance(instance);
-    return projectMInstance->FramesPerSecond();
+    return projectMInstance->TargetFramesPerSecond();
 }
 
 void projectm_set_fps(projectm_handle instance, int32_t fps)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->SetFramesPerSecond(fps);
-}
-
-const char* projectm_get_texture_path(projectm_handle instance)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    return projectm_alloc_string_from_std_string(projectMInstance->Settings().texturePath);
-}
-
-const char* projectm_get_data_path(projectm_handle instance)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    return projectm_alloc_string_from_std_string(projectMInstance->Settings().dataPath);
+    projectMInstance->SetTargetFramesPerSecond(fps);
 }
 
 void projectm_set_aspect_correction(projectm_handle instance, bool enabled)
@@ -375,83 +339,34 @@ void projectm_touch_destroy_all(projectm_handle instance)
     projectMInstance->TouchDestroyAll();
 }
 
-projectm_settings* projectm_get_settings(projectm_handle instance)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    const auto& settings = projectMInstance->Settings();
-
-    auto settingsStruct = projectm_alloc_settings();
-    settingsStruct->mesh_x = settings.meshX;
-    settingsStruct->mesh_y = settings.meshY;
-    settingsStruct->fps = settings.fps;
-    settingsStruct->texture_size = settings.textureSize;
-    settingsStruct->window_width = settings.windowWidth;
-    settingsStruct->window_height = settings.windowHeight;
-    settingsStruct->texture_path = projectm_alloc_string_from_std_string(settings.texturePath);
-    settingsStruct->data_path = projectm_alloc_string_from_std_string(settings.dataPath);
-    settingsStruct->soft_cut_duration = settings.softCutDuration;
-    settingsStruct->preset_duration = settings.presetDuration;
-    settingsStruct->hard_cut_enabled = settings.hardCutEnabled;
-    settingsStruct->hard_cut_duration = settings.hardCutDuration;
-    settingsStruct->hard_cut_sensitivity = settings.hardCutSensitivity;
-    settingsStruct->beat_sensitivity = settings.beatSensitivity;
-    settingsStruct->aspect_correction = settings.aspectCorrection;
-    settingsStruct->easter_egg = settings.easterEgg;
-
-    return settingsStruct;
-}
-
-void projectm_write_config(const char* config_file, const projectm_settings* settings)
-{
-    class ProjectM::Settings cppSettings;
-    cppSettings.meshX = settings->mesh_x;
-    cppSettings.meshY = settings->mesh_y;
-    cppSettings.fps = settings->fps;
-    cppSettings.textureSize = settings->texture_size;
-    cppSettings.windowWidth = settings->window_width;
-    cppSettings.windowHeight = settings->window_height;
-    cppSettings.texturePath = settings->texture_path ? settings->texture_path : "";
-    cppSettings.dataPath = settings->data_path ? settings->data_path : "";
-    cppSettings.softCutDuration = settings->soft_cut_duration;
-    cppSettings.presetDuration = settings->preset_duration;
-    cppSettings.hardCutEnabled = settings->hard_cut_enabled;
-    cppSettings.hardCutDuration = settings->hard_cut_duration;
-    cppSettings.hardCutSensitivity = settings->hard_cut_sensitivity;
-    cppSettings.beatSensitivity = settings->beat_sensitivity;
-    cppSettings.aspectCorrection = settings->aspect_correction;
-    cppSettings.easterEgg = settings->easter_egg;
-
-    ProjectM::WriteConfig(config_file, cppSettings);
-}
-
-void projectm_lock_preset(projectm_handle instance, bool lock)
-{
-    auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->SetPresetLocked(lock);
-}
-
-bool projectm_is_preset_locked(projectm_handle instance)
+bool projectm_get_preset_locked(projectm_handle instance)
 {
     auto projectMInstance = handle_to_instance(instance);
     return projectMInstance->PresetLocked();
 }
 
+void projectm_set_preset_locked(projectm_handle instance, bool lock)
+{
+    auto projectMInstance = handle_to_instance(instance);
+    projectMInstance->SetPresetLocked(lock);
+}
+
 void projectm_get_window_size(projectm_handle instance, size_t* width, size_t* height)
 {
     auto projectMInstance = handle_to_instance(instance);
-    *width = projectMInstance->WindowWidth();
-    *height = projectMInstance->WindowHeight();
+    *width = static_cast<size_t>(projectMInstance->WindowWidth());
+    *height = static_cast<size_t>(projectMInstance->WindowHeight());
 }
 
 void projectm_set_window_size(projectm_handle instance, size_t width, size_t height)
 {
     auto projectMInstance = handle_to_instance(instance);
-    projectMInstance->ResetOpenGL(width, height);
+    projectMInstance->SetWindowSize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
 }
 
 unsigned int projectm_pcm_get_max_samples()
 {
-    return Pcm::maxSamples;
+    return libprojectM::Audio::WaveformSamples;
 }
 
 template<class BufferType>
@@ -459,14 +374,7 @@ static auto PcmAdd(projectm_handle instance, const BufferType* samples, unsigned
 {
     auto* projectMInstance = handle_to_instance(instance);
 
-    if (channels == PROJECTM_MONO)
-    {
-        projectMInstance->Pcm().AddMono(samples, count);
-    }
-    else
-    {
-        projectMInstance->Pcm().AddStereo(samples, count);
-    }
+    projectMInstance->PCM().Add(samples, channels, count);
 }
 
 auto projectm_pcm_add_float(projectm_handle instance, const float* samples, unsigned int count, projectm_channels channels) -> void
@@ -484,9 +392,7 @@ auto projectm_pcm_add_uint8(projectm_handle instance, const uint8_t* samples, un
     PcmAdd(instance, samples, count, channels);
 }
 
-auto projectm_write_debug_image_on_next_frame(projectm_handle instance) -> void
+auto projectm_write_debug_image_on_next_frame(projectm_handle, const char*) -> void
 {
-    auto* projectMInstance = handle_to_instance(instance);
-
-    projectMInstance->DumpDebugImageOnNextFrame();
+    // UNIMPLEMENTED
 }

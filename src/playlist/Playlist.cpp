@@ -3,10 +3,10 @@
 #include <algorithm>
 
 // Fall back to boost if compiler doesn't support C++17
-#include FS_INCLUDE
-using namespace FS_NAMESPACE::filesystem;
+#include PROJECTM_FILESYSTEM_INCLUDE
+using namespace PROJECTM_FILESYSTEM_NAMESPACE::filesystem;
 
-namespace ProjectM {
+namespace libprojectM {
 namespace Playlist {
 
 const char* PlaylistEmptyException::what() const noexcept
@@ -16,13 +16,13 @@ const char* PlaylistEmptyException::what() const noexcept
 
 Playlist::Playlist()
 {
-    m_randomGenerator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+    m_randomGenerator.seed(static_cast<unsigned int>(std::chrono::system_clock::now().time_since_epoch().count()));
 }
 
 
 uint32_t Playlist::Size() const
 {
-    return m_items.size();
+    return static_cast<uint32_t>(m_items.size());
 }
 
 
@@ -162,6 +162,16 @@ auto Playlist::Shuffle() const -> bool
 void Playlist::Sort(uint32_t startIndex, uint32_t count,
                     Playlist::SortPredicate predicate, Playlist::SortOrder order)
 {
+    if (startIndex >= m_items.size())
+    {
+        return;
+    }
+
+    if (startIndex + count >= m_items.size())
+    {
+        count = static_cast<uint32_t>(m_items.size() - startIndex);
+    }
+
     m_presetHistory.clear();
 
     std::sort(m_items.begin() + startIndex,
@@ -199,7 +209,7 @@ void Playlist::Sort(uint32_t startIndex, uint32_t count,
 }
 
 
-auto Playlist::NextPresetIndex() -> size_t
+auto Playlist::NextPresetIndex() -> uint32_t
 {
     if (m_items.empty())
     {
@@ -210,7 +220,7 @@ auto Playlist::NextPresetIndex() -> size_t
 
     if (m_shuffle)
     {
-        std::uniform_int_distribution<size_t> randomDistribution(0, m_items.size());
+        std::uniform_int_distribution<uint32_t> randomDistribution(0, static_cast<uint32_t>(m_items.size()));
         m_currentPosition = randomDistribution(m_randomGenerator);
     }
     else
@@ -226,7 +236,7 @@ auto Playlist::NextPresetIndex() -> size_t
 }
 
 
-auto Playlist::PreviousPresetIndex() -> size_t
+auto Playlist::PreviousPresetIndex() -> uint32_t
 {
     if (m_items.empty())
     {
@@ -237,14 +247,14 @@ auto Playlist::PreviousPresetIndex() -> size_t
 
     if (m_shuffle)
     {
-        std::uniform_int_distribution<size_t> randomDistribution(0, m_items.size());
+        std::uniform_int_distribution<uint32_t> randomDistribution(0, static_cast<uint32_t>(m_items.size()));
         m_currentPosition = randomDistribution(m_randomGenerator);
     }
     else
     {
         if (m_currentPosition == 0)
         {
-            m_currentPosition = m_items.size() - 1;
+            m_currentPosition = static_cast<uint32_t>(m_items.size() - 1);
         }
         else
         {
@@ -255,7 +265,7 @@ auto Playlist::PreviousPresetIndex() -> size_t
     return m_currentPosition;
 }
 
-auto Playlist::LastPresetIndex() -> size_t
+auto Playlist::LastPresetIndex() -> uint32_t
 {
     if (m_items.empty())
     {
@@ -278,7 +288,7 @@ auto Playlist::LastPresetIndex() -> size_t
 }
 
 
-auto Playlist::PresetIndex() const -> size_t
+auto Playlist::PresetIndex() const -> uint32_t
 {
     if (m_items.empty())
     {
@@ -289,7 +299,7 @@ auto Playlist::PresetIndex() const -> size_t
 }
 
 
-auto Playlist::SetPresetIndex(size_t presetIndex) -> size_t
+auto Playlist::SetPresetIndex(uint32_t presetIndex) -> uint32_t
 {
     if (m_items.empty())
     {
@@ -329,9 +339,9 @@ auto Playlist::Filter() -> class Filter&
 }
 
 
-auto Playlist::ApplyFilter() -> size_t
+auto Playlist::ApplyFilter() -> uint32_t
 {
-    size_t itemsRemoved{};
+    uint32_t itemsRemoved{};
 
     for (auto it = begin(m_items); it != end(m_items);)
     {
@@ -372,4 +382,4 @@ void Playlist::AddCurrentPresetIndexToHistory()
 
 
 } // namespace Playlist
-} // namespace ProjectM
+} // namespace libprojectM

@@ -2,7 +2,7 @@
 
 #include <cstring>
 
-namespace ProjectM {
+namespace libprojectM {
 namespace Playlist {
 
 auto Filter::List() const -> const std::vector<std::string>&
@@ -124,6 +124,7 @@ auto Filter::ApplyExpression(const std::string& filename, const std::string& fil
 
                 currentFilenameChar++;
                 currentFilterChar++;
+                continue;
 
             default:
                 if (*currentFilterChar != *currentFilenameChar &&
@@ -156,4 +157,4 @@ auto Filter::ApplyExpression(const std::string& filename, const std::string& fil
 
 
 } // namespace Playlist
-} // namespace ProjectM
+} // namespace libprojectM

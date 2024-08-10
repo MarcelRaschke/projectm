@@ -3,12 +3,14 @@ if(NOT ENABLE_SDL_UI)
 endif()
 
 add_executable(projectM-Test-UI
+        ConfigFile.cpp
+        ConfigFile.h
         audioCapture.cpp
         audioCapture.hpp
         loopback.cpp
         loopback.hpp
-        pmSDL.hpp
         pmSDL.cpp
+        pmSDL.hpp
         projectM_SDL_main.cpp
         setup.cpp
         setup.hpp
@@ -16,8 +18,7 @@ add_executable(projectM-Test-UI
 
 target_link_libraries(projectM-Test-UI
         PRIVATE
-        projectM::libprojectM
-        projectM::playlist
+        libprojectM::playlist
         GLM::GLM
         SDL2::SDL2
         SDL2::SDL2main

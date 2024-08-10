@@ -20,79 +20,34 @@
  */
 #pragma once
 
-#include "Common.hpp"
-#include "PCM.hpp"
-#include "PresetFactoryManager.hpp"
-#include "fatal.h"
+#include <projectM-4/projectM_export.h>
 
-#include "libprojectM/event.h"
+#include <Renderer/RenderContext.hpp>
 
-#ifdef _WIN32
-
-#ifdef _MSC_VER
-#pragma warning(disable : 4244)
-#pragma warning(disable : 4305)
-#endif /* _MSC_VER */
-#endif /** _WIN32 */
-
-#include <sys/types.h>
+#include <Audio/PCM.hpp>
 
 #include <memory>
 #include <string>
 #include <vector>
 
-#if USE_THREADS
+namespace libprojectM {
 
-#include "BackgroundWorker.h"
-
-#include <mutex>
-#include <thread>
-
-#endif
-
-class BeatDetect;
-
-class Pcm;
-
-class Func;
-
+namespace Renderer {
+class CopyTexture;
+class PresetTransition;
 class Renderer;
+class TextureManager;
+class TransitionShaderManager;
+} // namespace Renderer
 
 class Preset;
-
+class PresetFactoryManager;
 class TimeKeeper;
 
-class Pipeline;
-
-class PipelineContext;
-
-class ProjectM
+class PROJECTM_EXPORT ProjectM
 {
 public:
-    class Settings
-    {
-    public:
-        size_t meshX{32};
-        size_t meshY{24};
-        size_t fps{35};
-        size_t textureSize{512};
-        size_t windowWidth{512};
-        size_t windowHeight{512};
-        std::string texturePath;
-        std::string dataPath;
-        double presetDuration{15.0};
-        double softCutDuration{10.0};
-        double hardCutDuration{60.0};
-        bool hardCutEnabled{false};
-        float hardCutSensitivity{2.0};
-        float beatSensitivity{1.0};
-        bool aspectCorrection{true};
-        float easterEgg{0.0};
-    };
-
-    explicit ProjectM(const std::string& configurationFilename);
-
-    explicit ProjectM(const class Settings& configurationFilename);
+    ProjectM();
 
     virtual ~ProjectM();
 
@@ -132,21 +87,37 @@ public:
      */
     void LoadPresetData(std::istream& presetData, bool smoothTransition);
 
-    void ResetOpenGL(size_t width, size_t height);
+    void SetWindowSize(uint32_t width, uint32_t height);
+
+    /**
+     * @brief Sets the texture paths used to find images for presets.
+     *
+     * Setting new texture paths will clear the texture manager cache and reload textures.
+     * This can cause lags in rendering.
+     *
+     * @param texturePaths A list of paths projectM will look for texture images, in order.
+     */
+    void SetTexturePaths(std::vector<std::string> texturePaths);
 
     void ResetTextures();
 
-    void RenderFrame();
+    void RenderFrame(uint32_t targetFramebufferObject = 0);
 
-    auto InitRenderToTexture() -> unsigned;
+    /**
+     * @brief Sets a user-specified time for rendering the next frame
+     * Negative values will make projectM use the system clock instead.
+     * @param secondsSinceStart Fractional seconds since rendering the first frame.
+     */
+    void SetFrameTime(double secondsSinceStart);
 
-    void KeyHandler(projectMEvent event,
-                    projectMKeycode keyCode,
-                    projectMModifier modifier);
-
-    void SetTextureSize(size_t size);
-
-    auto TextureSize() const -> size_t;
+    /**
+     * @brief Gets the time of the last frame rendered.
+     * @note This will not return the value set with SetFrameTime, but the actual time used to render the last frame.
+     *       If a user-specified frame time was set, this value is returned. Otherwise, the frame time measured via the
+     *       system clock will be returned.
+     * @return Seconds elapsed rendering the last frame since starting projectM.
+     */
+    double GetFrameTime();
 
     void SetBeatSensitivity(float sensitivity);
 
@@ -180,13 +151,13 @@ public:
      * @brief Returns the current frames per second value.
      * @return The current frames per second value.
      */
-    auto FramesPerSecond() const -> int32_t;
+    auto TargetFramesPerSecond() const -> int32_t;
 
     /**
      * @brief Sets a new current frames per second value.
      * @param fps The new frames per second value.
      */
-    void SetFramesPerSecond(int32_t fps);
+    void SetTargetFramesPerSecond(int32_t fps);
 
     auto AspectCorrection() const -> bool;
 
@@ -196,9 +167,9 @@ public:
 
     void SetEasterEgg(float value);
 
-    void MeshSize(size_t& meshResolutionX, size_t& meshResolutionY) const;
+    void MeshSize(uint32_t& meshResolutionX, uint32_t& meshResolutionY) const;
 
-    void SetMeshSize(size_t meshResolutionX, size_t meshResolutionY);
+    void SetMeshSize(uint32_t meshResolutionX, uint32_t meshResolutionY);
 
     void Touch(float touchX, float touchY, int pressure, int touchType);
 
@@ -208,97 +179,60 @@ public:
 
     void TouchDestroyAll();
 
-    auto Settings() const -> const class Settings&;
-
-    /// Writes a Settings configuration to the specified file
-    static auto WriteConfig(const std::string& configurationFilename,
-                            const class Settings& settings) -> bool;
-
     /// Turn on or off a lock that prevents projectM from switching to another preset
     void SetPresetLocked(bool locked);
 
     /// Returns true if the active preset is locked
     auto PresetLocked() const -> bool;
 
-    auto Pcm() -> class Pcm&;
+    auto PCM() -> Audio::PCM&;
 
     auto WindowWidth() -> int;
 
     auto WindowHeight() -> int;
 
-    void DefaultKeyHandler(projectMEvent event, projectMKeycode keycode);
-
-    /**
-     * @brief Dumps a debug image to the working dir when the next frame is rendered.
-     *
-     * The main texture is dumped after render pass 1, e.g. before shaders are applied.
-     */
-    void DumpDebugImageOnNextFrame();
-
 private:
-    void EvaluateSecondPreset();
-
-    /**
-     * @brief Renders the first pass of a frame.
-     * @param pipeline A pointer to a Pipeline for use in pass 2.
-     * @return Returns the pointer passed in pipeline if in a transition, else returns nullptr.
-     */
-    auto RenderFrameOnlyPass1(Pipeline* pipeline) -> Pipeline*;
-
-    void RenderFrameOnlyPass2(Pipeline* pipeline, int offsetX, int offsetY);
-
-    void RenderFrameEndOnSeparatePasses(Pipeline* pipeline);
-
-    auto PipelineContext() -> class PipelineContext&;
-
-    auto PipelineContext2() -> class PipelineContext&;
-
-    void ReadConfig(const std::string& configurationFilename);
-
-    void ReadSettings(const class Settings& settings);
-
     void Initialize();
-
-    void Reset();
-
-    void ResetEngine();
 
     void StartPresetTransition(std::unique_ptr<Preset>&& preset, bool hardCut);
 
-    void RecreateRenderer();
+    void LoadIdlePreset();
 
-#if USE_THREADS
+    auto GetRenderContext() -> Renderer::RenderContext;
 
-    void ThreadWorker();
-
-#endif
-
-    class Pcm m_pcm; //!< Audio data buffer and analyzer instance.
-
-    class Settings m_settings; //!< The projectM Settings.
+    uint32_t m_meshX{32};              //!< Per-point mesh horizontal resolution.
+    uint32_t m_meshY{24};              //!< Per-point mesh vertical resolution.
+    uint32_t m_targetFps{35};          //!< Target frames per second.
+    uint32_t m_windowWidth{0};            //!< EvaluateFrameData window width. If 0, nothing is rendered.
+    uint32_t m_windowHeight{0};           //!< EvaluateFrameData window height. If 0, nothing is rendered.
+    double m_presetDuration{30.0};   //!< Preset duration in seconds.
+    double m_softCutDuration{3.0};   //!< Soft cut transition time.
+    double m_hardCutDuration{20.0};  //!< Time after which a hard cut can happen at the earliest.
+    bool m_hardCutEnabled{false};    //!< If true, hard cuts based on beat detection are enabled.
+    float m_hardCutSensitivity{2.0}; //!< Loudness sensitivity value for hard cuts.
+    float m_beatSensitivity{1.0};    //!< General beat sensitivity modifier for presets.
+    bool m_aspectCorrection{true};   //!< If true, corrects aspect ratio for non-rectangular windows.
+    float m_easterEgg{1.0};          //!< Random preset duration modifier. See TimeKeeper class.
+    float m_previousFrameVolume{};   //!< Volume in previous frame, used for hard cuts.
 
     std::vector<std::string> m_textureSearchPaths; ///!< List of paths to search for texture files
 
     /** Timing information */
-    int m_count{0}; //!< Rendered frame count since start
+    int m_frameCount{0}; //!< Rendered frame count since start
 
-    bool m_presetLocked{false}; //!< If true, the preset change event will not be sent.
+    bool m_presetLocked{false};         //!< If true, the preset change event will not be sent.
     bool m_presetChangeNotified{false}; //!< Stores whether the user has been notified that projectM wants to switch the preset.
 
-    PresetFactoryManager m_presetFactoryManager; //!< Provides access to all available preset factories.
+    std::unique_ptr<PresetFactoryManager> m_presetFactoryManager; //!< Provides access to all available preset factories.
 
-    std::unique_ptr<class PipelineContext> m_pipelineContext;  //!< Pipeline context for the first/current preset.
-    std::unique_ptr<class PipelineContext> m_pipelineContext2; //!< Pipeline context for the next/transitioning preset.
-
-    std::unique_ptr<Renderer> m_renderer;     //!< The Preset renderer.
-    std::unique_ptr<BeatDetect> m_beatDetect; //!< The beat detection class.
-    std::unique_ptr<Preset> m_activePreset;   //!< Currently loaded preset.
-    std::unique_ptr<Preset> m_transitioningPreset;  //!< Destination preset when smooth preset switching.
-    std::unique_ptr<TimeKeeper> m_timeKeeper; //!< Keeps the different timers used to render and switch presets.
-
-#if USE_THREADS
-    mutable std::recursive_mutex m_presetSwitchMutex; //!< Mutex for locking preset switching while rendering and vice versa.
-    std::thread m_workerThread;                       //!< Background worker for preloading presets.
-    BackgroundWorkerSync m_workerSync;                //!< Background work synchronizer.
-#endif
+    Audio::PCM m_audioStorage;                                                    //!< Audio data buffer and analyzer instance.
+    std::unique_ptr<Renderer::TextureManager> m_textureManager;                   //!< The texture manager.
+    std::unique_ptr<Renderer::TransitionShaderManager> m_transitionShaderManager; //!< The transition shader manager.
+    std::unique_ptr<Renderer::CopyTexture> m_textureCopier;                       //!< Class that copies textures 1:1 to another texture or framebuffer.
+    std::unique_ptr<Preset> m_activePreset;                                       //!< Currently loaded preset.
+    std::unique_ptr<Preset> m_transitioningPreset;                                //!< Destination preset when smooth preset switching.
+    std::unique_ptr<Renderer::PresetTransition> m_transition;                     //!< Transition effect used for blending.
+    std::unique_ptr<TimeKeeper> m_timeKeeper;                                     //!< Keeps the different timers used to render and switch presets.
 };
+
+} // namespace libprojectM

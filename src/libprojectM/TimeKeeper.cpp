@@ -1,8 +1,9 @@
 #include "TimeKeeper.hpp"
 
-#include "RandomNumberGenerators.hpp"
-
 #include <algorithm>
+#include <random>
+
+namespace libprojectM {
 
 TimeKeeper::TimeKeeper(double presetDuration, double smoothDuration, double hardcutDuration, double easterEgg)
     : m_easterEgg(easterEgg)
@@ -13,11 +14,28 @@ TimeKeeper::TimeKeeper(double presetDuration, double smoothDuration, double hard
     UpdateTimers();
 }
 
+void TimeKeeper::SetFrameTime(double secondsSinceStart)
+{
+    m_userSpecifiedTime = secondsSinceStart;
+}
+
+double TimeKeeper::GetFrameTime() const
+{
+    return m_currentTime;
+}
+
 void TimeKeeper::UpdateTimers()
 {
-    auto currentTime = std::chrono::high_resolution_clock::now();
+    double currentFrameTime{m_userSpecifiedTime};
 
-    m_currentTime = std::chrono::duration<double>(currentTime - m_startTime).count();
+    if (m_userSpecifiedTime < 0.0)
+    {
+        auto currentTime = std::chrono::high_resolution_clock::now();
+        currentFrameTime = std::chrono::duration<double>(currentTime - m_startTime).count();
+    }
+
+    m_secondsSinceLastFrame = currentFrameTime - m_currentTime;
+    m_currentTime = currentFrameTime;
     m_presetFrameA++;
     m_presetFrameB++;
 }
@@ -73,12 +91,12 @@ double TimeKeeper::PresetProgressA()
         return 1.0;
     }
 
-    return (m_currentTime - m_presetTimeA) / m_presetDurationA;
+    return std::min((m_currentTime - m_presetTimeA) / m_presetDurationA, 1.0);
 }
 
 double TimeKeeper::PresetProgressB()
 {
-    return (m_currentTime - m_presetTimeB) / m_presetDurationB;
+    return std::min((m_currentTime - m_presetTimeB) / m_presetDurationB, 1.0);
 }
 
 int TimeKeeper::PresetFrameB()
@@ -91,19 +109,25 @@ int TimeKeeper::PresetFrameA()
     return m_presetFrameA;
 }
 
-int TimeKeeper::PresetTimeB()
+double TimeKeeper::PresetTimeB()
 {
     return m_presetTimeB;
 }
 
-int TimeKeeper::PresetTimeA()
+double TimeKeeper::PresetTimeA()
 {
     return m_presetTimeA;
 }
 
 double TimeKeeper::sampledPresetDuration()
 {
-    return std::max<double>(1, std::min<double>(60, RandomNumberGenerators::gaussian
-        (m_presetDuration, m_easterEgg)));
+    if (m_easterEgg < 0.001)
+    {
+        return m_presetDuration;
+    }
 
+    std::normal_distribution<double> gaussianDistribution(m_presetDuration, m_easterEgg);
+    return std::max<double>(1.0, gaussianDistribution(m_randomGenerator));
 }
+
+} // namespace libprojectM
