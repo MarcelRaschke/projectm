@@ -1,12 +1,12 @@
-[![Windows Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_windows.yml/badge.svg?branch=master)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_windows.yml)
-[![Linux Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_linux.yml/badge.svg?branch=master)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_linux.yml)
-[![macOS Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_osx.yml/badge.svg?branch=master)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_osx.yml)
-[![Emscripten Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_emscripten.yml/badge.svg?branch=master)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_emscripten.yml)
-[![Android Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_android.yml/badge.svg?branch=master)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_android.yml)
+[![Windows Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_windows.yml/badge.svg?branch=main)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_windows.yml)
+[![Linux Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_linux.yml/badge.svg?branch=main)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_linux.yml)
+[![macOS Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_osx.yml/badge.svg?branch=main)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_osx.yml)
+[![Emscripten Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_emscripten.yml/badge.svg?branch=main)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_emscripten.yml)
+[![Android Build Status](https://github.com/projectM-visualizer/projectm/actions/workflows/build_android.yml/badge.svg?branch=main)](https://github.com/projectM-visualizer/projectm/actions/workflows/build_android.yml)
 
 ![Discord Shield](https://discordapp.com/api/guilds/737206408482914387/widget.png?style=shield) [Chat with us on Discord](https://discord.gg/N9DyQfCH4j)
 
-![Logo](https://github.com/projectM-visualizer/projectm/raw/master/docs/web/logo.png)
+![Logo](https://github.com/projectM-visualizer/projectm/raw/main/docs/web/logo.png)
 
 ## projectM - The most advanced open-source music visualizer
 
@@ -234,12 +234,12 @@ If you maintain packages of libprojectM, we are happy to work with you! Please n
 
 ## Authors
 
-[Authors](https://github.com/projectM-visualizer/projectm/raw/master/AUTHORS.txt)
+[Authors](https://github.com/projectM-visualizer/projectm/raw/main/AUTHORS.txt)
 
 ## License
 
 The core projectM library is released under
-the [GNU Lesser General Public License 2.1](https://github.com/projectM-visualizer/projectm/raw/master/LICENSE.txt) to
+the [GNU Lesser General Public License 2.1](https://github.com/projectM-visualizer/projectm/raw/main/LICENSE.txt) to
 keep any changes open-sourced, but also enable the use of libprojectM in closed-source applications (as a shared
 library) as long as the license terms are adhered to. The up- and downstream projects may use different licenses -
 please check all parts of the software to be compatible with your specific project if you plan an integration.
